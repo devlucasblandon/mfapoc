@@ -1,0 +1,472 @@
+{
+  "info": {
+    "name": "POC3 Security JWT",
+    "_postman_id": "poc3-security-jwt",
+    "description": "Colección de pruebas para POC3 Security con autenticación JWT",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login - Admin User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('access_token', response.access_token);",
+                  "    pm.environment.set('refresh_token', response.refresh_token);",
+                  "    console.log('Access token saved:', response.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"admin\",\"password\":\"admin123\"}"
+            },
+            "url": "http://localhost:8083/auth/login"
+          }
+        },
+        {
+          "name": "Login - Regular User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('user_access_token', response.access_token);",
+                  "    pm.environment.set('user_refresh_token', response.refresh_token);",
+                  "    console.log('User access token saved:', response.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"user1\",\"password\":\"user123\"}"
+            },
+            "url": "http://localhost:8083/auth/login"
+          }
+        },
+        {
+          "name": "Login - Invalid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"invalid\",\"password\":\"wrong\"}"
+            },
+            "url": "http://localhost:8083/auth/login"
+          }
+        },
+        {
+          "name": "Get Current User Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/auth/me"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('access_token', response.access_token);",
+                  "    console.log('Token refreshed:', response.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refresh_token\":\"{{refresh_token}}\"}"
+            },
+            "url": "http://localhost:8083/auth/refresh"
+          }
+        },
+        {
+          "name": "Get Demo Tokens",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:8083/auth/demo-tokens"
+          }
+        },
+        {
+          "name": "Get Token Info",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:8083/auth/token-info/{{access_token}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers - JWT Protected",
+      "item": [
+        {
+          "name": "Create Customer - With JWT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Alice Johnson\",\"email\":\"alice@example.com\",\"phone\":\"+57-300-123-4567\"}"
+            },
+            "url": "http://localhost:8083/customers"
+          }
+        },
+        {
+          "name": "Get Customer - With JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/customers/alice@example.com"
+          }
+        },
+        {
+          "name": "List All Customers - With JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/customers"
+          }
+        },
+        {
+          "name": "Create Customer - Without JWT (Error 401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Bob Smith\",\"email\":\"bob@example.com\",\"phone\":\"+57-300-987-6543\"}"
+            },
+            "url": "http://localhost:8083/customers"
+          }
+        },
+        {
+          "name": "Get Customer - Without JWT (Error 401)",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:8083/customers/alice@example.com"
+          }
+        },
+        {
+          "name": "Create Customer - Invalid JWT (Error 401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid-token"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Charlie Brown\",\"email\":\"charlie@example.com\",\"phone\":\"+57-300-555-1234\"}"
+            },
+            "url": "http://localhost:8083/customers"
+          }
+        },
+        {
+          "name": "Delete Customer - Admin Only",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/customers/alice@example.com"
+          }
+        },
+        {
+          "name": "Delete Customer - Regular User (Error 403)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/customers/bob@example.com"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Security Tests",
+      "item": [
+        {
+          "name": "JWT Token Manipulation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiIsInVzZXIiXSwibWZhX3ZlcmlmaWVkIjp0cnVlLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzM1NzI4MDAwfQ.invalid"
+              }
+            ],
+            "url": "http://localhost:8083/auth/me"
+          }
+        },
+        {
+          "name": "Expired Token Test",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiIsInVzZXIiXSwibWZhX3ZlcmlmaWVkIjp0cnVlLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjAwMDAwMDAwfQ.expired"
+              }
+            ],
+            "url": "http://localhost:8083/auth/me"
+          }
+        },
+        {
+          "name": "Malformed Authorization Header",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic dXNlcjpwYXNz"
+              }
+            ],
+            "url": "http://localhost:8083/auth/me"
+          }
+        },
+        {
+          "name": "Missing Bearer Prefix",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/auth/me"
+          }
+        },
+        {
+          "name": "SQL Injection in Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"admin'; DROP TABLE users; --\",\"password\":\"admin123\"}"
+            },
+            "url": "http://localhost:8083/auth/login"
+          }
+        },
+        {
+          "name": "XSS in Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"<script>alert('xss')</script>\",\"password\":\"admin123\"}"
+            },
+            "url": "http://localhost:8083/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Performance Tests",
+      "item": [
+        {
+          "name": "Login Performance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"admin\",\"password\":\"admin123\"}"
+            },
+            "url": "http://localhost:8083/auth/login"
+          }
+        },
+        {
+          "name": "Token Validation Performance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/auth/me"
+          }
+        },
+        {
+          "name": "Create Customer Performance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Performance Test User\",\"email\":\"perf@test.com\",\"phone\":\"+57-300-000-0000\"}"
+            },
+            "url": "http://localhost:8083/customers"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Legacy Compatibility",
+      "item": [
+        {
+          "name": "Create Customer - Legacy Endpoint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Legacy User\",\"email\":\"legacy@example.com\",\"phone\":\"+57-300-111-1111\"}"
+            },
+            "url": "http://localhost:8083/customers-legacy"
+          }
+        },
+        {
+          "name": "Get Customer - Legacy Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "http://localhost:8083/customers-legacy/legacy@example.com"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8083"
+    }
+  ]
+}

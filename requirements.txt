@@ -8,3 +8,5 @@ pydantic==2.8.2
 python-jose[cryptography]==3.3.0
 cryptography==43.0.1
 ortools==9.10.4067
+PyJWT==2.8.0
+python-multipart==0.0.9
