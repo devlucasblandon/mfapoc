@@ -1,0 +1,54 @@
+name: Postman Smoke (Newman)
+
+on:
+  workflow_dispatch:
+    inputs:
+      poc:
+        description: 'POC to run (poc1|poc2|poc3|poc4)'
+        required: true
+        default: 'poc1'
+
+jobs:
+  postman:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Newman
+        run: npm i --silent
+
+      - name: Start services (compose minimal)
+        run: |
+          case "${{ github.event.inputs.poc }}" in
+            poc1) docker compose up -d postgres redis jaeger prometheus grafana && docker compose --profile poc1 up -d api_poc1;;
+            poc2) docker compose up -d redis jaeger prometheus grafana && docker compose --profile poc2 up -d api_poc2;;
+            poc3) docker compose up -d keycloak jaeger prometheus grafana && docker compose --profile poc3 up -d api_poc3;;
+            poc4) docker compose up -d redis jaeger prometheus grafana && docker compose --profile poc4 up -d api_poc4;;
+          esac
+          sleep 15
+
+      - name: Seed POC1 (if needed)
+        if: ${{ github.event.inputs.poc == 'poc1' }}
+        run: docker compose exec -T postgres psql -U postgres -d medisupply < poc1_inventory/schema.sql || true
+
+      - name: Run Newman
+        run: |
+          case "${{ github.event.inputs.poc }}" in
+            poc1) npm run postman:poc1;;
+            poc2) npm run postman:poc2;;
+            poc3) npm run postman:poc3;;
+            poc4) npm run postman:poc4;;
+          esac
+
+      - name: Logs on fail
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Shutdown
+        if: always()
+        run: docker compose down -v

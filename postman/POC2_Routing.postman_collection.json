@@ -1,0 +1,26 @@
+{
+  "info": {
+    "name": "POC2 Routing",
+    "_postman_id": "poc2-routing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Solve Route",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"jobId\":\"job-1\",\"points\":[{\"id\":0,\"lat\":4.6,\"lon\":-74.08},{\"id\":1,\"lat\":4.61,\"lon\":-74.09}]}"
+        },
+        "url": "http://localhost:8081/routes/solve"
+      }
+    }
+  ]
+}

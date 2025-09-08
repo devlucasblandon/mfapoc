@@ -1,0 +1,30 @@
+{
+  "info": {
+    "name": "MediSupply Local",
+    "_postman_id": "env-001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [],
+  "variable": [
+    {
+      "key": "base_poc1",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "base_poc2",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "base_poc3",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "base_poc4",
+      "value": "http://localhost:8084"
+    },
+    {
+      "key": "mfa_header",
+      "value": "true"
+    }
+  ]
+}

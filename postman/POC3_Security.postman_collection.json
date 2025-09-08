@@ -1,0 +1,371 @@
+{
+  "info": {
+    "name": "POC3 Security",
+    "_postman_id": "poc3-security",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Customer (MFA required)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Alice\",\"email\":\"alice@example.com\",\"phone\":\"+57-300\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Get Customer",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "url": "http://localhost:8083/customers/alice@example.com"
+      }
+    },
+    {
+      "name": "Create Customer - Sin MFA (Error 401)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Bob\",\"email\":\"bob@example.com\",\"phone\":\"+57-301\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Create Customer - MFA Falso (Error 401)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "false"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Charlie\",\"email\":\"charlie@example.com\",\"phone\":\"+57-302\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Get Customer - Sin MFA (Error 401)",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:8083/customers/alice@example.com"
+      }
+    },
+    {
+      "name": "Get Customer - No Existe (Error 404)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "url": "http://localhost:8083/customers/nonexistent@example.com"
+      }
+    },
+    {
+      "name": "Create Customer - Datos Inválidos (Error 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"\",\"email\":\"invalid-email\",\"phone\":\"\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Create Customer - Campos Faltantes (Error 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"David\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Create Customer - Caracteres Especiales",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"José María\",\"email\":\"josé.maría+test@example.com\",\"phone\":\"+57-300-123-4567\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Get Customer - Caracteres Especiales",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "url": "http://localhost:8083/customers/josé.maría+test@example.com"
+      }
+    },
+    {
+      "name": "Create Customer - Datos Largos",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"A Very Long Name That Exceeds Normal Length Limits For Testing Purposes\",\"email\":\"very.long.email.address.for.testing.purposes@verylongdomainname.com\",\"phone\":\"+57-300-123-4567-890\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Create Customer - Datos Sensibles",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Sensitive User\",\"email\":\"sensitive@bank.com\",\"phone\":\"+57-300-999-8888\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Get Customer - Datos Sensibles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "url": "http://localhost:8083/customers/sensitive@bank.com"
+      }
+    },
+    {
+      "name": "Create Customer - Duplicado (Sobrescribir)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Alice Updated\",\"email\":\"alice@example.com\",\"phone\":\"+57-300-999\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Get Customer - Verificar Actualización",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "url": "http://localhost:8083/customers/alice@example.com"
+      }
+    },
+    {
+      "name": "Test - Headers Maliciosos",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          },
+          {
+            "key": "X-Forwarded-For",
+            "value": "192.168.1.1"
+          },
+          {
+            "key": "User-Agent",
+            "value": "Mozilla/5.0 (compatible; SecurityTest/1.0)"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Security Test\",\"email\":\"security@test.com\",\"phone\":\"+57-300-000\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Test - Método No Permitido (PUT)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Test\",\"email\":\"test@example.com\",\"phone\":\"+57-300\"}"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Test - Método No Permitido (DELETE)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "url": "http://localhost:8083/customers/alice@example.com"
+      }
+    },
+    {
+      "name": "Test - Content-Type Incorrecto",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "name=Test&email=test@example.com&phone=+57-300"
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    },
+    {
+      "name": "Test - JSON Malformado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-mfa",
+            "value": "true"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Test\",\"email\":\"test@example.com\",\"phone\":\"+57-300\""
+        },
+        "url": "http://localhost:8083/customers"
+      }
+    }
+  ]
+}

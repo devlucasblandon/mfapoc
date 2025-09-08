@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+ENV POSTGRES_DSN=postgresql://postgres:postgres@postgres:5432/medisupply
+ENV REDIS_URL=redis://redis:6379/0
+ENV OTLP_ENDPOINT=http://jaeger:4318
+EXPOSE 8080
+CMD ["uvicorn", "poc1_inventory.api:app", "--host", "0.0.0.0", "--port", "8080"]

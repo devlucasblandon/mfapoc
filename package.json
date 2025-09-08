@@ -1,0 +1,14 @@
+{
+  "name": "medisupply-pocs",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postman:poc1": "newman run postman/poc1_inventory.postman_collection.json -e postman/environment.medisupply.local.json",
+    "postman:poc2": "newman run postman/poc2_routing.postman_collection.json -e postman/environment.medisupply.local.json",
+    "postman:poc3": "newman run postman/poc3_security.postman_collection.json -e postman/environment.medisupply.local.json",
+    "postman:poc4": "newman run postman/poc4_offline.postman_collection.json -e postman/environment.medisupply.local.json"
+  },
+  "devDependencies": {
+    "newman": "^6.2.0"
+  }
+}

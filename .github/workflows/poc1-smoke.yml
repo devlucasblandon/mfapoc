@@ -1,0 +1,28 @@
+name: POC1 Smoke (Compose + k6)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Compose
+        run: docker compose version
+      - name: Start infra + POC1
+        run: |
+          docker compose up -d postgres redis jaeger prometheus grafana
+          docker compose --profile poc1 up -d api_poc1
+          sleep 10
+          docker compose exec -T postgres psql -U postgres -d medisupply < poc1_inventory/schema.sql || true
+      - name: k6 smoke
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: scripts/k6_inventory.js
+      - name: Compose logs (on fail)
+        if: failure()
+        run: docker compose logs --tail=200
+      - name: Shutdown
+        if: always()
+        run: docker compose down -v

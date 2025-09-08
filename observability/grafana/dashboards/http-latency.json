@@ -1,0 +1,24 @@
+
+{
+  "title": "HTTP Latency & Errors",
+  "schemaVersion": 16,
+  "version": 1,
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Latency (histogram quantiles)",
+      "targets": [
+        {"expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket[1m])) by (le,route))"},
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le,route))"},
+        {"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[1m])) by (le,route))"}
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Requests by status",
+      "targets": [
+        {"expr": "sum(rate(http_requests_total[1m])) by (status,route)"}
+      ]
+    }
+  ]
+}

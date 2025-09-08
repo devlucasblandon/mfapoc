@@ -1,0 +1,81 @@
+
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: medisupply
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: ["start-dev", "--http-port=8082"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports: ["8082:8082"]
+
+  prometheus:
+    image: prom/prometheus
+    volumes: ["./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana
+    ports: ["3000:3000"]
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_USERS_DEFAULT_THEME=light
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.56
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+
+  api_poc1:
+    build:
+      context: .
+      dockerfile: Dockerfile.poc1
+    profiles: ["poc1"]
+    depends_on: [postgres, redis, jaeger, prometheus, grafana]
+    ports: ["8080:8080"]
+
+  api_poc2:
+    build:
+      context: .
+      dockerfile: Dockerfile.poc2
+    profiles: ["poc2"]
+    depends_on: [redis, jaeger, prometheus, grafana]
+    ports: ["8081:8081"]
+
+  api_poc3:
+    build:
+      context: .
+      dockerfile: Dockerfile.poc3
+    profiles: ["poc3"]
+    depends_on: [keycloak, jaeger, prometheus, grafana]
+    ports: ["8083:8083"]
+
+  api_poc4:
+    build:
+      context: .
+      dockerfile: Dockerfile.poc4
+    profiles: ["poc4"]
+    depends_on: [redis, jaeger, prometheus, grafana]
+    ports: ["8084:8084"]
+
+volumes:
+  pgdata:

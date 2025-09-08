@@ -1,0 +1,51 @@
+{
+  "info": {
+    "name": "POC4 Offline Orders",
+    "_postman_id": "poc4-offline",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "abc123"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"orderId\":\"o1\",\"lines\":[{\"sku\":\"SKU-1\",\"qty\":2}]}"
+        },
+        "url": "http://localhost:8084/orders"
+      }
+    },
+    {
+      "name": "Update Order",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "If-Match",
+            "value": "etag123"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"orderId\":\"o1\",\"lines\":[{\"sku\":\"SKU-1\",\"qty\":3}]}"
+        },
+        "url": "http://localhost:8084/orders/o1"
+      }
+    }
+  ]
+}

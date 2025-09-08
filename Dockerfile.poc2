@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends     build-essential python3-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+ENV REDIS_URL=redis://redis:6379/1
+ENV OTLP_ENDPOINT=http://jaeger:4318
+EXPOSE 8081
+CMD ["uvicorn", "poc2_routing.api:app", "--host", "0.0.0.0", "--port", "8081"]
