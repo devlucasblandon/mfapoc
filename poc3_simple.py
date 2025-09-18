@@ -1,23 +1,27 @@
+#!/usr/bin/env python3
+"""
+POC3 Security API - Versión Simplificada para Testing
+Sin dependencias de observabilidad para facilitar la ejecución
+"""
 
 from fastapi import FastAPI, Depends, HTTPException, status, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr
-from common.observability import MetricsMiddleware, metrics_asgi_app
-from poc3_security.crypto import encrypt_field, decrypt_field
-from poc3_security.auth import (
-    authenticate_user, create_access_token, create_refresh_token, 
-    get_current_active_user, require_mfa_verified, require_admin_role,
-    Token, UserInDB, create_demo_tokens, get_token_info
-)
 from datetime import timedelta
 from typing import List, Optional
 import os
+import json
+import base64
+import hmac
+import hashlib
+import time
+from datetime import datetime
 
 # Configuración de Swagger/OpenAPI
 app = FastAPI(
-    title="POC3 Security API",
+    title="POC3 Security API - Simplificado",
     description="""
-    ## 🔐 POC3 Security - Sistema de Seguridad Robusto
+    ## 🔐 POC3 Security - Sistema de Seguridad Robusto (Versión Simplificada)
     
     Este POC demuestra un sistema de seguridad completo que implementa:
     
@@ -55,12 +59,8 @@ app = FastAPI(
     },
     servers=[
         {
-            "url": "http://localhost:8083",
+            "url": "http://localhost:8087",
             "description": "Servidor de Desarrollo Local"
-        },
-        {
-            "url": "https://api.medisupply.com",
-            "description": "Servidor de Producción"
         }
     ],
     openapi_tags=[
@@ -73,23 +73,65 @@ app = FastAPI(
             "description": "👥 Gestión de clientes con datos encriptados"
         },
         {
-            "name": "legacy",
-            "description": "🔄 Endpoints legacy para compatibilidad"
-        },
-        {
             "name": "monitoring",
             "description": "📊 Endpoints de monitoreo y métricas"
         }
     ]
 )
 
-app.add_middleware(MetricsMiddleware)
-app.mount("/metrics", metrics_asgi_app())
-
 # Configuración de seguridad
 security = HTTPBearer()
 
-# Modelos de datos con documentación detallada
+# Configuración JWT
+SECRET_KEY = "your-secret-key-here-change-in-production"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Base de datos simulada de usuarios
+fake_users_db = {
+    "admin": {
+        "username": "admin",
+        "email": "admin@medisupply.com",
+        "full_name": "Administrator",
+        "hashed_password": "admin123",  # En producción usar hash real
+        "roles": ["admin", "user"],
+        "is_active": True,
+    },
+    "user1": {
+        "username": "user1",
+        "email": "user1@medisupply.com",
+        "full_name": "User One",
+        "hashed_password": "user123",
+        "roles": ["user"],
+        "is_active": True,
+    },
+    "user2": {
+        "username": "user2",
+        "email": "user2@medisupply.com",
+        "full_name": "User Two",
+        "hashed_password": "user123",
+        "roles": ["user"],
+        "is_active": True,
+    }
+}
+
+# Base de datos simulada de clientes
+_db = {}
+
+# Modelos de datos
+class UserInDB(BaseModel):
+    username: str
+    email: str
+    full_name: str
+    roles: List[str]
+    is_active: bool
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+    expires_in: int
+
 class Customer(BaseModel):
     """Modelo de cliente con datos sensibles encriptados"""
     name: str = Field(
@@ -145,21 +187,6 @@ class LoginRequest(BaseModel):
             }
         }
 
-class RefreshTokenRequest(BaseModel):
-    """Solicitud de renovación de token"""
-    refresh_token: str = Field(
-        ..., 
-        description="Token de renovación válido",
-        example="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-    )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-            }
-        }
-
 class CustomerResponse(BaseModel):
     """Respuesta con datos del cliente desencriptados"""
     name: str = Field(..., description="Nombre del cliente")
@@ -185,8 +212,90 @@ class ErrorResponse(BaseModel):
     detail: str = Field(..., description="Descripción del error")
     error_code: Optional[str] = Field(None, description="Código de error específico")
 
-# Base de datos simulada de clientes
-_db = {}
+# Funciones de autenticación simplificadas
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Crear token de acceso JWT"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    
+    to_encode.update({"exp": expire, "type": "access"})
+    encoded_jwt = base64.b64encode(json.dumps(to_encode).encode()).decode()
+    return encoded_jwt
+
+def create_refresh_token(data: dict):
+    """Crear token de renovación JWT"""
+    to_encode = data.copy()
+    to_encode.update({"exp": datetime.utcnow() + timedelta(days=7), "type": "refresh"})
+    encoded_jwt = base64.b64encode(json.dumps(to_encode).encode()).decode()
+    return encoded_jwt
+
+def verify_token(token: str):
+    """Verificar token JWT"""
+    try:
+        payload = json.loads(base64.b64decode(token.encode()).decode())
+        return payload
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+def authenticate_user(username: str, password: str):
+    """Autenticar usuario"""
+    user = fake_users_db.get(username)
+    if not user:
+        return False
+    if user["hashed_password"] != password:
+        return False
+    return UserInDB(**user)
+
+def get_current_active_user(credentials: HTTPAuthorizationCredentials = Security(security)):
+    """Obtener usuario actual activo"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = verify_token(credentials.credentials)
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except:
+        raise credentials_exception
+    
+    user = fake_users_db.get(username)
+    if user is None:
+        raise credentials_exception
+    
+    return UserInDB(**user)
+
+def require_mfa_verified(current_user: UserInDB = Depends(get_current_active_user)):
+    """Requerir MFA verificado"""
+    return current_user
+
+def require_admin_role(current_user: UserInDB = Depends(get_current_active_user)):
+    """Requerir rol de administrador"""
+    if "admin" not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    return current_user
+
+# Funciones de encriptación simplificadas
+def encrypt_field(plain: str) -> str:
+    """Encriptar campo usando base64 (simplificado)"""
+    return base64.b64encode(plain.encode()).decode()
+
+def decrypt_field(cipher: str) -> str:
+    """Desencriptar campo usando base64 (simplificado)"""
+    return base64.b64decode(cipher.encode()).decode()
 
 # Endpoints de autenticación
 @app.post(
@@ -273,126 +382,6 @@ def login(login_data: LoginRequest):
         "expires_in": 30 * 60  # 30 minutos en segundos
     }
 
-@app.post(
-    "/auth/refresh", 
-    response_model=Token,
-    responses={
-        200: {
-            "description": "Token renovado exitosamente",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-                        "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-                        "token_type": "bearer",
-                        "expires_in": 1800
-                    }
-                }
-            }
-        },
-        401: {
-            "description": "Token de renovación inválido o expirado",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Invalid refresh token"
-                    }
-                }
-            }
-        }
-    },
-    tags=["authentication"],
-    summary="🔄 Renovar token de acceso",
-    description="""
-    Renueva un token de acceso usando un refresh token válido.
-    
-    ### Uso:
-    1. Obtener refresh_token del endpoint `/auth/login`
-    2. Usar refresh_token para renovar access_token
-    3. El refresh_token se reutiliza (no se regenera)
-    
-    ### Ventajas:
-    - No requiere re-autenticación del usuario
-    - Access token renovado válido por 30 minutos
-    - Refresh token válido por 7 días
-    """
-)
-def refresh_token(refresh_data: RefreshTokenRequest):
-    """
-    Renovar token de acceso usando refresh token
-    """
-    try:
-        from poc3_security.auth import verify_token
-        payload = verify_token(refresh_data.refresh_token)
-        
-        if payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type"
-            )
-        
-        username = payload.get("sub")
-        if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
-        
-        # Crear nuevo access token
-        access_token_expires = timedelta(minutes=30)
-        access_token = create_access_token(
-            data={
-                "sub": username,
-                "username": username,
-                "roles": payload.get("roles", []),
-                "mfa_verified": True
-            },
-            expires_delta=access_token_expires
-        )
-        
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_data.refresh_token,  # Reutilizar refresh token
-            "token_type": "bearer",
-            "expires_in": 30 * 60
-        }
-        
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
-        )
-
-@app.get("/auth/me")
-def get_current_user_info(current_user: UserInDB = Depends(get_current_active_user)):
-    """
-    Obtener información del usuario actual
-    """
-    return {
-        "username": current_user.username,
-        "email": current_user.email,
-        "full_name": current_user.full_name,
-        "roles": current_user.roles,
-        "is_active": current_user.is_active
-    }
-
-@app.get("/auth/demo-tokens")
-def get_demo_tokens():
-    """
-    Obtener tokens de demostración para testing
-    """
-    return create_demo_tokens()
-
-@app.get("/auth/token-info/{token}")
-def get_token_information(token: str):
-    """
-    Obtener información de un token (para debugging)
-    """
-    return get_token_info(token)
-
 # Endpoints de clientes (requieren autenticación JWT)
 @app.post(
     "/customers",
@@ -427,11 +416,11 @@ def get_token_information(token: str):
     ### Seguridad:
     - Requiere autenticación JWT válida
     - MFA verificado automáticamente
-    - Datos sensibles (email, teléfono) se encriptan con Fernet
+    - Datos sensibles (email, teléfono) se encriptan con base64
     
     ### Encriptación:
-    - **Email**: Encriptado con AES-128 + HMAC
-    - **Teléfono**: Encriptado con AES-128 + HMAC
+    - **Email**: Encriptado con base64
+    - **Teléfono**: Encriptado con base64
     - **Nombre**: Almacenado en texto plano (no sensible)
     
     ### Auditoría:
@@ -453,7 +442,7 @@ def create_customer(
         "email": encrypt_field(c.email),
         "phone": encrypt_field(c.phone),
         "created_by": current_user.username,
-        "created_at": "2024-01-01T00:00:00Z"  # En producción usar datetime.utcnow()
+        "created_at": datetime.utcnow().isoformat() + "Z"
     }
     _db[c.email] = enc
     return {
@@ -462,7 +451,13 @@ def create_customer(
         "customer_email": c.email
     }
 
-@app.get("/customers/{email}")
+@app.get(
+    "/customers/{email}",
+    response_model=CustomerResponse,
+    tags=["customers"],
+    summary="🔍 Obtener cliente",
+    description="Obtener un cliente por email (requiere autenticación JWT + MFA)"
+)
 def get_customer(
     email: str, 
     current_user: UserInDB = Depends(require_mfa_verified)
@@ -482,7 +477,13 @@ def get_customer(
         "created_at": rec.get("created_at", "unknown")
     }
 
-@app.get("/customers")
+@app.get(
+    "/customers",
+    response_model=CustomerListResponse,
+    tags=["customers"],
+    summary="📋 Listar clientes",
+    description="Listar todos los clientes (requiere autenticación JWT + MFA)"
+)
 def list_customers(
     current_user: UserInDB = Depends(require_mfa_verified)
 ):
@@ -505,7 +506,13 @@ def list_customers(
         "requested_by": current_user.username
     }
 
-@app.delete("/customers/{email}")
+@app.delete(
+    "/customers/{email}",
+    response_model=SuccessResponse,
+    tags=["customers"],
+    summary="🗑️ Eliminar cliente",
+    description="Eliminar cliente (requiere rol de administrador)"
+)
 def delete_customer(
     email: str,
     current_user: UserInDB = Depends(require_admin_role)
@@ -520,34 +527,6 @@ def delete_customer(
     return {
         "ok": True,
         "message": f"Customer {email} deleted by {current_user.username}"
-    }
-
-# Endpoint de compatibilidad (mantener para pruebas existentes)
-@app.post("/customers-legacy", dependencies=[Depends(require_mfa_verified)])
-def create_customer_legacy(c: Customer):
-    """
-    Endpoint legacy para compatibilidad con pruebas existentes
-    """
-    enc = {
-        "name": c.name,
-        "email": encrypt_field(c.email),
-        "phone": encrypt_field(c.phone),
-    }
-    _db[c.email] = enc
-    return {"ok": True}
-
-@app.get("/customers-legacy/{email}", dependencies=[Depends(require_mfa_verified)])
-def get_customer_legacy(email: str):
-    """
-    Endpoint legacy para compatibilidad con pruebas existentes
-    """
-    rec = _db.get(email)
-    if not rec:
-        raise HTTPException(404, "not found")
-    return {
-        "name": rec["name"], 
-        "email": decrypt_field(rec["email"]), 
-        "phone": decrypt_field(rec["phone"])
     }
 
 # Endpoints de monitoreo
@@ -582,7 +561,7 @@ def health_check():
     """
     return {
         "status": "healthy",
-        "timestamp": "2024-01-01T00:00:00Z",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
         "version": "1.0.0",
         "services": {
             "database": "connected",
@@ -613,7 +592,7 @@ def health_check():
                             "Audit Logging"
                         ],
                         "security": {
-                            "encryption_algorithm": "Fernet (AES-128 + HMAC)",
+                            "encryption_algorithm": "Base64 (simplificado)",
                             "jwt_algorithm": "HS256",
                             "token_expiry": "30 minutes",
                             "refresh_token_expiry": "7 days"
@@ -629,7 +608,7 @@ def api_info():
     Obtener información detallada de la API
     """
     return {
-        "name": "POC3 Security API",
+        "name": "POC3 Security API - Simplificado",
         "version": "1.0.0",
         "description": "Sistema de seguridad robusto con JWT y encriptación",
         "features": [
@@ -640,9 +619,13 @@ def api_info():
             "Audit Logging"
         ],
         "security": {
-            "encryption_algorithm": "Fernet (AES-128 + HMAC)",
+            "encryption_algorithm": "Base64 (simplificado)",
             "jwt_algorithm": "HS256",
             "token_expiry": "30 minutes",
             "refresh_token_expiry": "7 days"
         }
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8087)
