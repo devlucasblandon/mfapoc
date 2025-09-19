@@ -1,8 +1,11 @@
+"""
+POC3 Security API - Versión Simplificada para Swagger
+Sin dependencias de observabilidad para facilitar la ejecución
+"""
 
 from fastapi import FastAPI, Depends, HTTPException, status, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr
-from common.observability import MetricsMiddleware, metrics_asgi_app
 from poc3_security.crypto import encrypt_field, decrypt_field
 from poc3_security.auth import (
     authenticate_user, create_access_token, create_refresh_token, 
@@ -55,7 +58,7 @@ app = FastAPI(
     },
     servers=[
         {
-            "url": "http://localhost:8083",
+            "url": "http://localhost:8086",
             "description": "Servidor de Desarrollo Local"
         },
         {
@@ -82,9 +85,6 @@ app = FastAPI(
         }
     ]
 )
-
-app.add_middleware(MetricsMiddleware)
-app.mount("/metrics", metrics_asgi_app())
 
 # Configuración de seguridad
 security = HTTPBearer()
@@ -366,7 +366,12 @@ def refresh_token(refresh_data: RefreshTokenRequest):
             detail="Invalid refresh token"
         )
 
-@app.get("/auth/me")
+@app.get(
+    "/auth/me",
+    tags=["authentication"],
+    summary="👤 Información del usuario actual",
+    description="Obtener información del usuario autenticado actualmente"
+)
 def get_current_user_info(current_user: UserInDB = Depends(get_current_active_user)):
     """
     Obtener información del usuario actual
@@ -379,14 +384,24 @@ def get_current_user_info(current_user: UserInDB = Depends(get_current_active_us
         "is_active": current_user.is_active
     }
 
-@app.get("/auth/demo-tokens")
+@app.get(
+    "/auth/demo-tokens",
+    tags=["authentication"],
+    summary="🎫 Tokens de demostración",
+    description="Obtener tokens de demostración para testing"
+)
 def get_demo_tokens():
     """
     Obtener tokens de demostración para testing
     """
     return create_demo_tokens()
 
-@app.get("/auth/token-info/{token}")
+@app.get(
+    "/auth/token-info/{token}",
+    tags=["authentication"],
+    summary="🔍 Información de token",
+    description="Obtener información de un token (para debugging)"
+)
 def get_token_information(token: str):
     """
     Obtener información de un token (para debugging)
@@ -462,7 +477,13 @@ def create_customer(
         "customer_email": c.email
     }
 
-@app.get("/customers/{email}")
+@app.get(
+    "/customers/{email}",
+    response_model=CustomerResponse,
+    tags=["customers"],
+    summary="🔍 Obtener cliente",
+    description="Obtener un cliente por email (requiere autenticación JWT + MFA)"
+)
 def get_customer(
     email: str, 
     current_user: UserInDB = Depends(require_mfa_verified)
@@ -482,7 +503,13 @@ def get_customer(
         "created_at": rec.get("created_at", "unknown")
     }
 
-@app.get("/customers")
+@app.get(
+    "/customers",
+    response_model=CustomerListResponse,
+    tags=["customers"],
+    summary="📋 Listar clientes",
+    description="Listar todos los clientes (requiere autenticación JWT + MFA)"
+)
 def list_customers(
     current_user: UserInDB = Depends(require_mfa_verified)
 ):
@@ -505,7 +532,13 @@ def list_customers(
         "requested_by": current_user.username
     }
 
-@app.delete("/customers/{email}")
+@app.delete(
+    "/customers/{email}",
+    response_model=SuccessResponse,
+    tags=["customers"],
+    summary="🗑️ Eliminar cliente",
+    description="Eliminar cliente (requiere rol de administrador)"
+)
 def delete_customer(
     email: str,
     current_user: UserInDB = Depends(require_admin_role)
@@ -520,34 +553,6 @@ def delete_customer(
     return {
         "ok": True,
         "message": f"Customer {email} deleted by {current_user.username}"
-    }
-
-# Endpoint de compatibilidad (mantener para pruebas existentes)
-@app.post("/customers-legacy", dependencies=[Depends(require_mfa_verified)])
-def create_customer_legacy(c: Customer):
-    """
-    Endpoint legacy para compatibilidad con pruebas existentes
-    """
-    enc = {
-        "name": c.name,
-        "email": encrypt_field(c.email),
-        "phone": encrypt_field(c.phone),
-    }
-    _db[c.email] = enc
-    return {"ok": True}
-
-@app.get("/customers-legacy/{email}", dependencies=[Depends(require_mfa_verified)])
-def get_customer_legacy(email: str):
-    """
-    Endpoint legacy para compatibilidad con pruebas existentes
-    """
-    rec = _db.get(email)
-    if not rec:
-        raise HTTPException(404, "not found")
-    return {
-        "name": rec["name"], 
-        "email": decrypt_field(rec["email"]), 
-        "phone": decrypt_field(rec["phone"])
     }
 
 # Endpoints de monitoreo
@@ -646,3 +651,7 @@ def api_info():
             "refresh_token_expiry": "7 days"
         }
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8086)

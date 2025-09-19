@@ -61,6 +61,10 @@ test-poc3-integration: poc3
 	@echo "Ejecutando pruebas de integración para POC3..."
 	k6 run scripts/k6_security_integration.js
 
+test-poc3-jwt: poc3
+	@echo "Ejecutando pruebas de JWT para POC3..."
+	k6 run scripts/k6_security_jwt.js
+
 test-poc3-all: poc3
 	@echo "Ejecutando todas las pruebas de POC3..."
 	@echo "1. Pruebas de seguridad avanzadas..."
@@ -69,3 +73,5 @@ test-poc3-all: poc3
 	k6 run scripts/k6_security_performance.js
 	@echo "3. Pruebas de integración..."
 	k6 run scripts/k6_security_integration.js
+	@echo "4. Pruebas de JWT..."
+	k6 run scripts/k6_security_jwt.js
